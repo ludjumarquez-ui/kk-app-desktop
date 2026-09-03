@@ -15,7 +15,8 @@ function createWindow () {
   });
 
   win.maximize();
-  win.loadFile('index.html');
+  // Mengarah ke folder www/index.html
+  win.loadFile('www/index.html');
 }
 
 app.whenReady().then(() => {
