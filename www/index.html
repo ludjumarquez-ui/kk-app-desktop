@@ -18,8 +18,11 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- SheetJS (Ekspor Excel) -->
+    <!-- SheetJS (Ekspor & Impor Excel) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <!-- CryptoJS (Enkripsi Key) -->
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
 
     <!-- Leaflet JS (Peta Interaktif) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -163,6 +166,7 @@
 
             <!-- TAB 2: GENERATOR KEY KARYAWAN -->
             <div id="tab-keygen" class="hidden space-y-6 max-w-6xl mx-auto">
+                <!-- FORM INPUT KEY MANUAL + DISPLAY -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <!-- FORM INPUT KEY -->
                     <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm md:col-span-1">
@@ -233,11 +237,61 @@
                     </div>
                 </div>
 
-                <!-- TABEL DOKUMEN KEY TERSIMPAN -->
+                <!-- GENERATE KEY MASSAL DARI EXCEL -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                     <h3 class="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-rectangle-list text-slate-600"></i> Riwayat Lisensi Key Diterbitkan
+                        <i class="fa-solid fa-file-excel text-emerald-600"></i> Generate Key Massal dari Excel
                     </h3>
+                    <p class="text-xs text-slate-500 mb-4">
+                        Format Excel: Kolom <strong>NBA</strong>, <strong>Nama</strong>, <strong>TTL</strong>, <strong>Password</strong>.
+                        Setiap baris akan menghasilkan satu Key terenkripsi AES.
+                    </p>
+                    <div class="flex gap-4 items-center flex-wrap">
+                        <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none">
+                        <button onclick="handleExcelImport()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-xl shadow-md transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-upload"></i> Import Excel
+                        </button>
+                        <button onclick="exportBulkKeysToJSON()" id="btn-export-bulk-json" class="hidden bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 px-5 rounded-xl shadow-md transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-download"></i> Export Semua Key Massal ke JSON
+                        </button>
+                    </div>
+                    <div id="excel-import-log" class="mt-4 text-xs text-slate-600"></div>
+                    <div class="mt-4 overflow-x-auto hidden" id="bulk-key-table-container">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-100">
+                                <tr>
+                                    <th class="px-4 py-3 font-bold border-b">NBA</th>
+                                    <th class="px-4 py-3 font-bold border-b">Nama</th>
+                                    <th class="px-4 py-3 font-bold border-b">TTL</th>
+                                    <th class="px-4 py-3 font-bold border-b">Key Terenkripsi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulk-key-table-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TABEL RIWAYAT KEY DENGAN FILTER & AKSI -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-rectangle-list text-slate-600"></i> Riwayat Lisensi Key Diterbitkan
+                        </h3>
+                        <div class="flex gap-3 flex-wrap">
+                            <input type="text" id="filter-key-search" oninput="renderKeysTable()" placeholder="Cari nama/NIK/key..." class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 w-56">
+                            <select id="filter-key-role" onchange="renderKeysTable()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                                <option value="ALL">Semua Role</option>
+                                <option value="Petugas Lapangan">Petugas Lapangan</option>
+                                <option value="Supervisor">Supervisor</option>
+                                <option value="Admin Kepala">Admin Kepala</option>
+                            </select>
+                            <select id="filter-key-status" onchange="renderKeysTable()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                                <option value="ALL">Semua Status</option>
+                                <option value="AKTIF">Aktif</option>
+                                <option value="NONAKTIF">Nonaktif</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm whitespace-nowrap">
                             <thead class="text-xs text-slate-500 uppercase bg-slate-100">
@@ -249,6 +303,7 @@
                                     <th class="px-4 py-3 font-bold border-b">Lisensi Key</th>
                                     <th class="px-4 py-3 font-bold border-b">Kadaluarsa</th>
                                     <th class="px-4 py-3 font-bold border-b text-center">Status</th>
+                                    <th class="px-4 py-3 font-bold border-b text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="table-keys-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
@@ -364,14 +419,60 @@
         </div>
     </div>
 
+    <!-- MODAL EDIT KEY (sederhana) -->
+    <div id="modal-edit-key" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800">Edit Key</h3>
+                <button onclick="closeEditKeyModal()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="form-edit-key" class="space-y-3">
+                <input type="hidden" id="edit-key-id">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nama Karyawan</label>
+                    <input type="text" id="edit-key-nama" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">NIK</label>
+                    <input type="text" id="edit-key-nik" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Role</label>
+                    <select id="edit-key-role" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none">
+                        <option value="Petugas Lapangan">Petugas Lapangan</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Admin Kepala">Admin Kepala</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Status</label>
+                    <select id="edit-key-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none">
+                        <option value="AKTIF">Aktif</option>
+                        <option value="NONAKTIF">Nonaktif</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="saveEditedKey()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-2 rounded-xl">Simpan</button>
+                    <button type="button" onclick="closeEditKeyModal()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // ================== KONFIGURASI DATABASE ==================
         const DB_NAME = 'KSP_Boawae_Desktop_Data';
-        const DB_VERSION = 2;
+        const DB_VERSION = 3; // Dinaikkan untuk memastikan store keys_karyawan ada
         const STORE_NAME = 'laporan_kunjungan';
         const KEYS_STORE = 'keys_karyawan';
 
-        let activeKeyData = null;
+        // Secret key untuk enkripsi AES (harus sama dengan mobile)
+        const SECRET_KEY = "KSP_BOAWAE_SECRET_2024";
 
+        let activeKeyData = null;
+        let map, markersLayer, timeChartInstance = null;
+
+        // ================== FUNGSI DATABASE ==================
         function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -422,6 +523,22 @@
             });
         }
 
+        async function updateKeyInDB(keyData) {
+            // Karena key_id adalah primary key, gunakan put untuk update
+            return saveKeyToDB(keyData);
+        }
+
+        async function deleteKeyFromDB(keyId) {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(KEYS_STORE, 'readwrite');
+                const store = tx.objectStore(KEYS_STORE);
+                store.delete(keyId);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
         async function saveTransactionsToDB(transactionsArray) {
             const db = await initDB();
             return new Promise((resolve, reject) => {
@@ -445,12 +562,12 @@
             });
         }
 
+        // ================== UTILITAS ==================
         function formatRupiah(angka) { return (!angka || isNaN(angka)) ? 'Rp 0' : 'Rp ' + parseInt(angka).toLocaleString('id-ID'); }
         function showLoading(text) { document.getElementById('loading-text').innerText = text; document.getElementById('loading-overlay').classList.replace('hidden', 'flex'); }
         function hideLoading() { document.getElementById('loading-overlay').classList.replace('flex', 'hidden'); }
 
-        let map, markersLayer, timeChartInstance = null;
-
+        // ================== NAVIGASI TAB ==================
         async function switchTab(tabId) {
             showLoading("Memuat data...");
             ['tab-overview', 'tab-keygen', 'tab-map', 'tab-data', 'tab-import'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -482,7 +599,7 @@
             hideLoading();
         }
 
-        // KEY GENERATOR FUNCTIONALITY
+        // ================== KEY GENERATOR MANUAL ==================
         async function handleGenerateKey(e) {
             e.preventDefault();
             const nama = document.getElementById('keygen-nama').value.trim();
@@ -541,24 +658,258 @@
             downloadAnchor.remove();
         }
 
+        // ================== RENDER TABEL KEY DENGAN FILTER ==================
         async function renderKeysTable() {
-            const keys = await getKeysDatabase();
-            const tbody = document.getElementById('table-keys-body');
-            if(keys.length === 0) return tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Belum ada key yang dibuat.</td></tr>`;
+            const allKeys = await getKeysDatabase();
+            const search = document.getElementById('filter-key-search').value.toLowerCase();
+            const filterRole = document.getElementById('filter-key-role').value;
+            const filterStatus = document.getElementById('filter-key-status').value;
 
-            tbody.innerHTML = keys.map(k => `
+            const filtered = allKeys.filter(k => {
+                let matchSearch = true;
+                if (search) {
+                    matchSearch = (k.nama_karyawan && k.nama_karyawan.toLowerCase().includes(search)) ||
+                                  (k.nik_karyawan && k.nik_karyawan.toLowerCase().includes(search)) ||
+                                  (k.key_id && k.key_id.toLowerCase().includes(search));
+                }
+                let matchRole = filterRole === 'ALL' || k.role === filterRole;
+                let matchStatus = filterStatus === 'ALL' || k.status === filterStatus;
+                return matchSearch && matchRole && matchStatus;
+            });
+
+            const tbody = document.getElementById('table-keys-body');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400">Tidak ada key yang sesuai.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(k => `
                 <tr class="hover:bg-slate-50 border-b border-slate-100">
                     <td class="px-4 py-3">${k.tanggal_dibuat}</td>
                     <td class="px-4 py-3 font-bold">${k.nama_karyawan}</td>
                     <td class="px-4 py-3 font-mono text-xs">${k.nik_karyawan}</td>
                     <td class="px-4 py-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs">${k.role}</span></td>
-                    <td class="px-4 py-3 font-mono font-bold text-brand-600">${k.key_id}</td>
+                    <td class="px-4 py-3 font-mono font-bold text-brand-600 max-w-[200px] truncate" title="${k.key_id}">${k.key_id}</td>
                     <td class="px-4 py-3 text-xs font-semibold ${k.tanggal_kadaluarsa === 'PERMANEN' ? 'text-emerald-600' : 'text-amber-600'}">${k.tanggal_kadaluarsa}</td>
-                    <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full text-[10px]">AKTIF</span></td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${k.status === 'AKTIF' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${k.status}</span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="openEditKeyModal('${k.key_id}')" class="w-8 h-8 rounded bg-sky-100 text-sky-600 hover:bg-sky-200" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteKey('${k.key_id}')" class="w-8 h-8 rounded bg-red-100 text-red-600 hover:bg-red-200" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
                 </tr>
             `).join('');
         }
 
+        // ================== EDIT KEY ==================
+        function openEditKeyModal(keyId) {
+            getKeysDatabase().then(keys => {
+                const key = keys.find(k => k.key_id === keyId);
+                if (!key) return alert("Key tidak ditemukan");
+                document.getElementById('edit-key-id').value = key.key_id;
+                document.getElementById('edit-key-nama').value = key.nama_karyawan;
+                document.getElementById('edit-key-nik').value = key.nik_karyawan;
+                document.getElementById('edit-key-role').value = key.role;
+                document.getElementById('edit-key-status').value = key.status;
+                document.getElementById('modal-edit-key').classList.remove('hidden');
+                document.getElementById('modal-edit-key').classList.add('flex');
+            });
+        }
+
+        function closeEditKeyModal() {
+            document.getElementById('modal-edit-key').classList.add('hidden');
+            document.getElementById('modal-edit-key').classList.remove('flex');
+        }
+
+        async function saveEditedKey() {
+            const keyId = document.getElementById('edit-key-id').value;
+            const nama = document.getElementById('edit-key-nama').value.trim();
+            const nik = document.getElementById('edit-key-nik').value.trim();
+            const role = document.getElementById('edit-key-role').value;
+            const status = document.getElementById('edit-key-status').value;
+
+            if (!nama || !nik) return alert("Nama dan NIK tidak boleh kosong");
+
+            const keys = await getKeysDatabase();
+            const existing = keys.find(k => k.key_id === keyId);
+            if (!existing) return alert("Data key tidak ditemukan");
+
+            existing.nama_karyawan = nama;
+            existing.nik_karyawan = nik;
+            existing.role = role;
+            existing.status = status;
+
+            await updateKeyInDB(existing);
+            closeEditKeyModal();
+            await renderKeysTable();
+            alert("Key berhasil diperbarui");
+        }
+
+        async function deleteKey(keyId) {
+            if (!confirm(`Hapus key ${keyId}?`)) return;
+            await deleteKeyFromDB(keyId);
+            await renderKeysTable();
+            alert("Key dihapus");
+        }
+
+        // ================== GENERATOR KEY MASSAL DARI EXCEL ==================
+        function encryptPayload(plainText) {
+            return CryptoJS.AES.encrypt(plainText, SECRET_KEY).toString();
+        }
+
+        async function handleExcelImport() {
+            const fileInput = document.getElementById('excel-file-input');
+            if (!fileInput.files.length) {
+                alert("Pilih file Excel terlebih dahulu.");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+                    if (jsonData.length === 0) {
+                        alert("File Excel kosong atau format tidak sesuai.");
+                        return;
+                    }
+
+                    const requiredColumns = ['NBA', 'Nama', 'TTL', 'Password'];
+                    const firstRow = jsonData[0];
+                    const missingCols = requiredColumns.filter(col => !(col in firstRow));
+                    if (missingCols.length > 0) {
+                        alert(`Kolom wajib tidak ditemukan: ${missingCols.join(', ')}. Pastikan header sesuai: NBA, Nama, TTL, Password.`);
+                        return;
+                    }
+
+                    showLoading("Memproses Excel dan menghasilkan key...");
+                    const generatedKeys = [];
+                    const logContainer = document.getElementById('excel-import-log');
+                    logContainer.innerHTML = '';
+
+                    for (const row of jsonData) {
+                        const nba = String(row['NBA'] || '').trim();
+                        const nama = String(row['Nama'] || '').trim();
+                        const ttl = String(row['TTL'] || '').trim();
+                        const password = String(row['Password'] || '').trim();
+
+                        if (!nba || !nama) {
+                            logContainer.innerHTML += `<div class="text-red-500">❌ Lewati baris tanpa NBA/Nama</div>`;
+                            continue;
+                        }
+
+                        // Payload yang akan dienkripsi
+                        const payload = JSON.stringify({ nba, nama, ttl, password });
+                        const encrypted = encryptPayload(payload);
+
+                        const keyObject = {
+                            key_id: encrypted,
+                            nba: nba,
+                            nama_karyawan: nama,
+                            nik_karyawan: nba,
+                            role: 'Petugas Lapangan',
+                            tanggal_dibuat: new Date().toISOString().split('T')[0],
+                            tanggal_kadaluarsa: 'PERMANEN',
+                            status: 'AKTIF',
+                            source: 'excel',
+                            ttl: ttl,
+                            password_encrypted: true
+                        };
+
+                        generatedKeys.push(keyObject);
+                    }
+
+                    // Simpan ke IndexedDB
+                    for (const key of generatedKeys) {
+                        await saveKeyToDB(key);
+                    }
+
+                    // Tampilkan di tabel
+                    renderBulkKeysTable(generatedKeys);
+                    document.getElementById('bulk-key-table-container').classList.remove('hidden');
+                    document.getElementById('btn-export-bulk-json').classList.remove('hidden');
+
+                    logContainer.innerHTML += `<div class="text-emerald-600">✅ Berhasil menghasilkan ${generatedKeys.length} key.</div>`;
+                    hideLoading();
+                } catch (err) {
+                    hideLoading();
+                    alert("Gagal memproses file: " + err.message);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderBulkKeysTable(keys) {
+            const tbody = document.getElementById('bulk-key-table-body');
+            if (keys.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-slate-400">Tidak ada key.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = keys.map(k => `
+                <tr class="hover:bg-slate-50 border-b border-slate-100">
+                    <td class="px-4 py-3 font-mono text-xs">${k.nba}</td>
+                    <td class="px-4 py-3 font-bold">${k.nama_karyawan}</td>
+                    <td class="px-4 py-3 text-xs">${k.ttl || '-'}</td>
+                    <td class="px-4 py-3">
+                        <div class="font-mono text-xs text-slate-500 truncate max-w-xs" title="${k.key_id}">${k.key_id.substring(0, 30)}...</div>
+                        <button onclick="copyText('${k.key_id}')" class="text-sky-600 hover:text-sky-800 text-xs font-bold mt-1">
+                            <i class="fa-regular fa-copy"></i> Salin
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => alert("Key disalin!"));
+        }
+
+        async function exportBulkKeysToJSON() {
+            const allKeys = await getKeysDatabase();
+            const excelKeys = allKeys.filter(k => k.source === 'excel');
+
+            if (excelKeys.length === 0) {
+                alert("Tidak ada key massal untuk diekspor.");
+                return;
+            }
+
+            const exportData = {
+                metadata: {
+                    app: "KK APP Mobile",
+                    version: "1.0",
+                    exported_at: new Date().toISOString()
+                },
+                keys: excelKeys.map(k => ({
+                    key: k.key_id,
+                    nba: k.nba,
+                    nama: k.nama_karyawan,
+                    ttl: k.ttl || null
+                }))
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Key_Activation_Mobile_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            alert(`Ekspor ${excelKeys.length} key berhasil.`);
+        }
+
+        // ================== FUNGSI OVERVIEW ==================
         async function renderOverview() {
             const db = await getDatabase();
             let totalUang = 0; let totalMacet = 0; let totalJanji = 0;
@@ -620,6 +971,7 @@
             });
         }
 
+        // ================== FUNGSI PETA ==================
         function initMap() {
             map = L.map('map').setView([-8.7392, 121.1563], 9);
             const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
@@ -659,6 +1011,7 @@
             document.getElementById('map-filter-kl').innerHTML = options;
         }
 
+        // ================== FUNGSI TABEL MASTER ==================
         async function renderMasterTable() {
             const db = await getDatabase();
             const search = document.getElementById('filter-search').value.toLowerCase();
@@ -693,6 +1046,37 @@
                 </tr>`).join('');
         }
 
+        // ================== EKSPOR EXCEL ==================
+        async function exportToExcel() {
+            const db = await getDatabase();
+            if (db.length === 0) return alert("Tidak ada data untuk diekspor.");
+
+            const dataToExport = db.map((act, index) => {
+                return {
+                    "No": index + 1,
+                    "ID Transaksi": act.id_aktivitas,
+                    "Tanggal": act.tanggal,
+                    "Jam": act.jam,
+                    "Petugas Lapangan": act.kl_snapshot,
+                    "NBA": act.nba,
+                    "Nama Anggota": act.nama_snapshot,
+                    "Wilayah/Desa": act.wilayah_snapshot || "",
+                    "Status Kunjungan": act.status,
+                    "Nominal Masuk": act.nominal_bayar || 0,
+                    "Tanggal Janji": act.tanggal_janji || "",
+                    "Keterangan": act.keterangan || "",
+                    "Latitude": act.latitude || "",
+                    "Longitude": act.longitude || ""
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Data Kunjungan");
+            XLSX.writeFile(workbook, `Data_Kunjungan_KSP_Boawae_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        // ================== IMPORT JSON LAPORAN ==================
         async function handleImportJSON(input) {
             const files = input.files; if (files.length === 0) return;
             showLoading("Memproses Impor File...");
@@ -709,6 +1093,7 @@
             switchTab('tab-overview');
         }
 
+        // ================== MODAL FOTO ==================
         function openModalFoto(base64, nama, waktu) {
             document.getElementById('modal-img-target').src = base64;
             document.getElementById('modal-foto-nama').innerText = nama;
@@ -718,6 +1103,7 @@
 
         function closeModalFoto() { document.getElementById('modal-foto').classList.replace('flex', 'hidden'); }
 
+        // ================== CLEAR DATABASE ==================
         async function clearDatabaseUI() {
             if (confirm("⚠️ Kosongkan seluruh database aplikasi desktop ini?")) {
                 showLoading("Menghapus data...");
@@ -729,11 +1115,13 @@
             }
         }
 
+        // ================== UPDATE HEADER ==================
         async function updateGlobalHeader() {
             const db = await getDatabase();
             document.getElementById('badge-total-transaksi').innerText = `${db.length.toLocaleString()} Transaksi Tersimpan`;
         }
 
+        // ================== INISIALISASI ==================
         window.onload = async function() {
             await updateGlobalHeader();
             await switchTab('tab-overview');
