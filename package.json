@@ -13,7 +13,7 @@
     "productName": "KK APP Desktop KSP Boawae",
     "files": [
       "main.js",
-      "index.html"
+      "www/**/*"
     ],
     "win": {
       "target": [
