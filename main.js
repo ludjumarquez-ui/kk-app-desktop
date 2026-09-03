@@ -1,21 +1,21 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
-function createWindow () {
+function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 700,
-    title: "KK APP Desktop & Key Generator - KSP Boawae",
+    title: "KK APP Desktop - KSP Boawae",
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
   win.maximize();
-  // Mengarah ke folder www/index.html
   win.loadFile('www/index.html');
 }
 
