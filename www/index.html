@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard & Key Generator - KSP Boawae</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { colors: { brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 900: '#14532d' } } }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- SheetJS (Ekspor Excel) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <!-- Leaflet JS (Peta Interaktif) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; user-select: none; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-map-marker { display: flex; align-items: center; justify-content: center; background: none; border: none; }
+        .custom-map-marker i { font-size: 28px; filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.4)); }
+        #loading-overlay { backdrop-filter: blur(5px); }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex overflow-hidden">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center">
+        <div class="animate-spin text-brand-500 text-6xl mb-4"><i class="fa-solid fa-circle-notch"></i></div>
+        <p class="text-white font-bold tracking-wider" id="loading-text">Memuat Sistem...</p>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0">
+        <div class="p-6 border-b border-slate-800 text-center">
+            <div class="w-16 h-16 bg-brand-500/20 text-brand-400 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3 border border-brand-500/30">
+                <i class="fa-solid fa-building-columns"></i>
+            </div>
+            <h1 class="font-bold tracking-wider">KSP BOAWAE</h1>
+            <p class="text-xs text-slate-400 mt-1">Desktop Admin & Key Generator</p>
+        </div>
+        
+        <div class="flex-grow p-4 space-y-2 overflow-y-auto">
+            <button onclick="switchTab('tab-overview')" id="nav-overview" class="w-full flex items-center gap-3 px-4 py-3 bg-brand-600 text-white rounded-xl text-sm font-semibold transition">
+                <i class="fa-solid fa-chart-pie w-5"></i> Ikhtisar & Analisis
+            </button>
+            <button onclick="switchTab('tab-keygen')" id="nav-keygen" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-xl text-sm font-semibold transition">
+                <i class="fa-solid fa-key w-5"></i> Generator Key Karyawan
+            </button>
+            <button onclick="switchTab('tab-map')" id="nav-map" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-xl text-sm font-semibold transition">
+                <i class="fa-solid fa-map-location-dot w-5"></i> Peta Pantauan HD
+            </button>
+            <button onclick="switchTab('tab-data')" id="nav-data" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-xl text-sm font-semibold transition">
+                <i class="fa-solid fa-table-list w-5"></i> Tabel Master Data
+            </button>
+            <button onclick="switchTab('tab-import')" id="nav-import" class="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-xl text-sm font-semibold transition">
+                <i class="fa-solid fa-cloud-arrow-up w-5"></i> Impor Laporan KL
+            </button>
+        </div>
+
+        <div class="p-4 border-t border-slate-800">
+            <button onclick="clearDatabaseUI()" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl text-xs font-bold transition border border-red-500/20">
+                <i class="fa-solid fa-trash-can"></i> Kosongkan Database
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow flex flex-col h-screen overflow-hidden bg-slate-50 relative">
+        
+        <!-- HEADER -->
+        <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center shrink-0 z-10 shadow-sm">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800" id="page-title">Ikhtisar Kinerja</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Sistem Desktop Administrasi & Otentikasi Karyawan.</p>
+            </div>
+            <div class="flex gap-3">
+                <div class="bg-slate-100 border border-slate-200 px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-brand-500"></i>
+                    <span id="badge-total-transaksi">0 Transaksi Tersimpan</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT AREA -->
+        <div class="flex-grow overflow-y-auto p-6 lg:p-8">
+            
+            <!-- TAB 1: OVERVIEW & ANALISIS -->
+            <div id="tab-overview" class="space-y-6 max-w-7xl mx-auto hidden">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl border border-emerald-100">
+                            <i class="fa-solid fa-rupiah-sign"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500">Total Uang Masuk</p>
+                            <h3 class="text-xl font-bold text-slate-900 mt-0.5" id="stat-uang">Rp 0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xl border border-blue-100">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500">Total Kunjungan</p>
+                            <h3 class="text-xl font-bold text-slate-900 mt-0.5" id="stat-kunjungan">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 text-xl border border-red-100">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500">Macet / Tidak Ketemu</p>
+                            <h3 class="text-xl font-bold text-red-600 mt-0.5" id="stat-macet">0</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xl border border-amber-100">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500">Janji Bayar</p>
+                            <h3 class="text-xl font-bold text-slate-900 mt-0.5" id="stat-janji">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-500"></i> Papan Peringkat Karyawan
+                        </h3>
+                        <div class="flex-grow flex flex-col justify-center space-y-3" id="leaderboard-container"></div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-brand-600"></i> Analisis Jam Kunjungan Aktif
+                        </h3>
+                        <div class="h-64 w-full relative"><canvas id="timeChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: GENERATOR KEY KARYAWAN -->
+            <div id="tab-keygen" class="hidden space-y-6 max-w-6xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- FORM INPUT KEY -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm md:col-span-1">
+                        <h3 class="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-key text-brand-600"></i> Buat Key Baru
+                        </h3>
+                        <form onsubmit="handleGenerateKey(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Nama Karyawan / PL</label>
+                                <input type="text" id="keygen-nama" required placeholder="Contoh: Petrus Nani" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">NIK / Kode Karyawan</label>
+                                <input type="text" id="keygen-nik" required placeholder="Contoh: PL-102" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Jabatan / Akses</label>
+                                <select id="keygen-role" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+                                    <option value="Petugas Lapangan">Petugas Lapangan (PL)</option>
+                                    <option value="Supervisor">Supervisor Lapangan</option>
+                                    <option value="Admin Kepala">Admin Kepala Kelalaian</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Masa Berlaku Key</label>
+                                <select id="keygen-durasi" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+                                    <option value="30">1 Bulan (30 Hari)</option>
+                                    <option value="90">3 Bulan (90 Hari)</option>
+                                    <option value="365">1 Tahun (365 Hari)</option>
+                                    <option value="0">Permanen (Tanpa Batas)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Key
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- DISPLAY HASIL KEY -->
+                    <div class="bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-md md:col-span-2 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="bg-brand-500/20 text-brand-400 text-xs font-bold px-3 py-1 rounded-full border border-brand-500/30">Otentikasi KSP Boawae</span>
+                                <span class="text-xs text-slate-400" id="keygen-timestamp">Siap Membuat Lisensi</span>
+                            </div>
+                            
+                            <p class="text-xs text-slate-400 mb-1">KUNCI LISENSI KARYAWAN (GENERATED KEY):</p>
+                            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-center text-xl md:text-2xl font-bold tracking-widest text-brand-400 select-all my-2" id="keygen-output-key">
+                                BOA-XXXX-XXXX-XXXX
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mt-6 text-xs text-slate-300">
+                                <div><span class="text-slate-500 block">Pemilik Key:</span> <strong id="keygen-output-nama" class="text-white text-sm">-</strong></div>
+                                <div><span class="text-slate-500 block">NIK Karyawan:</span> <strong id="keygen-output-nik" class="text-white text-sm">-</strong></div>
+                                <div><span class="text-slate-500 block">Akses Level:</span> <strong id="keygen-output-role" class="text-white text-sm">-</strong></div>
+                                <div><span class="text-slate-500 block">Kadaluarsa:</span> <strong id="keygen-output-exp" class="text-emerald-400 text-sm">-</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 mt-6">
+                            <button onclick="copyGeneratedKey()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2">
+                                <i class="fa-regular fa-copy"></i> Salin Key
+                            </button>
+                            <button onclick="exportKeyJSON()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 border border-slate-700">
+                                <i class="fa-solid fa-download"></i> Unduh File Key
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABEL DOKUMEN KEY TERSIMPAN -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                    <h3 class="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-rectangle-list text-slate-600"></i> Riwayat Lisensi Key Diterbitkan
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-100">
+                                <tr>
+                                    <th class="px-4 py-3 font-bold border-b">Tanggal Dibuat</th>
+                                    <th class="px-4 py-3 font-bold border-b">Nama Karyawan</th>
+                                    <th class="px-4 py-3 font-bold border-b">NIK</th>
+                                    <th class="px-4 py-3 font-bold border-b">Akses</th>
+                                    <th class="px-4 py-3 font-bold border-b">Lisensi Key</th>
+                                    <th class="px-4 py-3 font-bold border-b">Kadaluarsa</th>
+                                    <th class="px-4 py-3 font-bold border-b text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-keys-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: PETA PANTAUAN HD -->
+            <div id="tab-map" class="hidden h-full flex flex-col space-y-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-end shrink-0">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Filter Karyawan Lapangan</label>
+                        <select id="map-filter-kl" onchange="updateMap()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 w-56">
+                            <option value="ALL">Semua Karyawan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Tanggal Kunjungan</label>
+                        <input type="date" id="map-filter-date" onchange="updateMap()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+                
+                <div class="flex-grow bg-slate-200 rounded-2xl overflow-hidden border border-slate-300 shadow-inner relative z-0">
+                    <div id="map" class="w-full h-full"></div>
+                </div>
+            </div>
+
+            <!-- TAB 4: MASTER DATA & EXPORT -->
+            <div id="tab-data" class="hidden h-full flex flex-col">
+                <div class="bg-white p-5 rounded-t-2xl border border-slate-200 shadow-sm border-b-0 flex flex-wrap gap-4 justify-between items-end shrink-0">
+                    <div class="flex gap-4 w-full md:w-auto flex-wrap">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Cari Data</label>
+                            <input type="text" id="filter-search" oninput="renderMasterTable()" placeholder="Ketik nama / NBA..." class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 w-full md:w-56">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Karyawan</label>
+                            <select id="filter-kl" onchange="renderMasterTable()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 w-40">
+                                <option value="ALL">Semua</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">Status</label>
+                            <select id="filter-status" onchange="renderMasterTable()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 w-40">
+                                <option value="ALL">Semua Status</option>
+                                <option value="BAYAR">✅ BAYAR</option>
+                                <option value="JANJI BAYAR">📅 JANJI BAYAR</option>
+                                <option value="TIDAK BAYAR">❌ TIDAK BAYAR</option>
+                                <option value="TIDAK DI TEMPAT">🚪 TIDAK DI TEMPAT</option>
+                                <option value="TIDAK KETEMU">❓ TIDAK KETEMU</option>
+                                <option value="MENINGGAL">⚰️ MENINGGAL DUNIA</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-file-excel"></i> Ekspor Excel
+                    </button>
+                </div>
+
+                <div class="bg-white border border-slate-200 shadow-sm rounded-b-2xl flex-grow overflow-hidden flex flex-col">
+                    <div class="overflow-auto flex-grow relative">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-100 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 font-bold border-b">Waktu</th>
+                                    <th class="px-4 py-3 font-bold border-b">Karyawan (PL)</th>
+                                    <th class="px-4 py-3 font-bold border-b">Nama Anggota</th>
+                                    <th class="px-4 py-3 font-bold border-b">Status</th>
+                                    <th class="px-4 py-3 font-bold border-b text-right">Nominal</th>
+                                    <th class="px-4 py-3 font-bold border-b text-center">Tgl Janji</th>
+                                    <th class="px-4 py-3 font-bold border-b">Keterangan</th>
+                                    <th class="px-4 py-3 font-bold border-b text-center">Foto & Lokasi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-master-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: IMPORT JSON -->
+            <div id="tab-import" class="hidden max-w-3xl mx-auto mt-8">
+                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm text-center">
+                    <div class="w-20 h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Impor Laporan Karyawan</h2>
+                    <p class="text-slate-500 mb-8 text-sm">Unggah file <strong class="text-slate-700">.json</strong>. Penyimpanan IndexedDB Desktop mampu memuat data tak terbatas.</p>
+
+                    <div class="relative border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 transition rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer group">
+                        <input type="file" id="file-import-json" multiple accept=".json" onchange="handleImportJSON(this)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <i class="fa-regular fa-file-code text-4xl text-slate-400 group-hover:text-brand-500 mb-3 transition"></i>
+                        <span class="font-bold text-slate-600 group-hover:text-brand-600 transition">Klik atau Tarik File JSON ke Sini</span>
+                    </div>
+
+                    <div id="import-log" class="mt-6 text-left max-h-48 overflow-y-auto space-y-2 text-xs font-mono"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL FOTO -->
+    <div id="modal-foto" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+        <div class="absolute top-6 right-6">
+            <button onclick="closeModalFoto()" class="text-white hover:text-red-400 text-4xl transition"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <img id="modal-img-target" src="" class="max-w-full max-h-[80vh] rounded-lg shadow-2xl border-4 border-white mb-4">
+        <div class="bg-white/10 backdrop-blur px-6 py-3 rounded-xl text-white text-center">
+            <h3 id="modal-foto-nama" class="font-bold text-lg"></h3>
+            <p id="modal-foto-waktu" class="text-sm text-slate-300"></p>
+        </div>
+    </div>
+
+    <script>
+        const DB_NAME = 'KSP_Boawae_Desktop_Data';
+        const DB_VERSION = 2;
+        const STORE_NAME = 'laporan_kunjungan';
+        const KEYS_STORE = 'keys_karyawan';
+
+        let activeKeyData = null;
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = (e) => reject("IndexedDB Error: " + e.target.error);
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id_aktivitas' });
+                    }
+                    if (!db.objectStoreNames.contains(KEYS_STORE)) {
+                        db.createObjectStore(KEYS_STORE, { keyPath: 'key_id' });
+                    }
+                };
+            });
+        }
+
+        async function getDatabase() {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result.sort((a, b) => new Date(`${b.tanggal}T${b.jam}`) - new Date(`${a.tanggal}T${a.jam}`)));
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function getKeysDatabase() {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(KEYS_STORE, 'readonly');
+                const store = tx.objectStore(KEYS_STORE);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result.reverse());
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function saveKeyToDB(keyData) {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(KEYS_STORE, 'readwrite');
+                const store = tx.objectStore(KEYS_STORE);
+                store.put(keyData);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function saveTransactionsToDB(transactionsArray) {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                let count = 0;
+                transactionsArray.forEach(act => { store.put(act); count++; });
+                tx.oncomplete = () => resolve(count);
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function clearIndexedDB() {
+            const db = await initDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([STORE_NAME, KEYS_STORE], 'readwrite');
+                tx.objectStore(STORE_NAME).clear();
+                tx.objectStore(KEYS_STORE).clear();
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        function formatRupiah(angka) { return (!angka || isNaN(angka)) ? 'Rp 0' : 'Rp ' + parseInt(angka).toLocaleString('id-ID'); }
+        function showLoading(text) { document.getElementById('loading-text').innerText = text; document.getElementById('loading-overlay').classList.replace('hidden', 'flex'); }
+        function hideLoading() { document.getElementById('loading-overlay').classList.replace('flex', 'hidden'); }
+
+        let map, markersLayer, timeChartInstance = null;
+
+        async function switchTab(tabId) {
+            showLoading("Memuat data...");
+            ['tab-overview', 'tab-keygen', 'tab-map', 'tab-data', 'tab-import'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            ['nav-overview', 'nav-keygen', 'nav-map', 'nav-data', 'nav-import'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) { el.classList.remove('bg-brand-600', 'text-white'); el.classList.add('text-slate-300', 'hover:bg-slate-800'); }
+            });
+            const activeNav = document.getElementById(tabId.replace('tab-', 'nav-'));
+            if(activeNav) { activeNav.classList.replace('text-slate-300', 'bg-brand-600'); activeNav.classList.replace('hover:bg-slate-800', 'text-white'); }
+
+            const titles = { 
+                'tab-overview': 'Ikhtisar & Analisis Desktop', 
+                'tab-keygen': 'Generator Key Otentikasi Karyawan',
+                'tab-map': 'Peta Pantauan Geospasial HD', 
+                'tab-data': 'Tabel Master & Filter', 
+                'tab-import': 'Integrasi Data Baru' 
+            };
+            document.getElementById('page-title').innerText = titles[tabId];
+
+            if (tabId === 'tab-overview') { await renderOverview(); await renderTimeChart(); }
+            else if (tabId === 'tab-keygen') { await renderKeysTable(); }
+            else if (tabId === 'tab-data') { await updateDropdowns(); await renderMasterTable(); }
+            else if (tabId === 'tab-map') {
+                await updateDropdowns();
+                setTimeout(async () => { if(!map) initMap(); map.invalidateSize(); await updateMap(); }, 200);
+            }
+            hideLoading();
+        }
+
+        // KEY GENERATOR FUNCTIONALITY
+        async function handleGenerateKey(e) {
+            e.preventDefault();
+            const nama = document.getElementById('keygen-nama').value.trim();
+            const nik = document.getElementById('keygen-nik').value.trim();
+            const role = document.getElementById('keygen-role').value;
+            const durasi = parseInt(document.getElementById('keygen-durasi').value);
+
+            const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
+            const roleCode = role === 'Admin Kepala' ? 'ADM' : (role === 'Supervisor' ? 'SPV' : 'PL');
+            const keyString = `BOA-${roleCode}-${randomPart.slice(0,4)}-${randomPart.slice(4,8)}`;
+
+            let expiryDate = 'PERMANEN';
+            if (durasi > 0) {
+                const d = new Date(); d.setDate(d.getDate() + durasi);
+                expiryDate = d.toISOString().split('T')[0];
+            }
+
+            const keyObject = {
+                key_id: keyString,
+                nama_karyawan: nama,
+                nik_karyawan: nik,
+                role: role,
+                tanggal_dibuat: new Date().toISOString().split('T')[0],
+                tanggal_kadaluarsa: expiryDate,
+                status: 'AKTIF'
+            };
+
+            activeKeyData = keyObject;
+            await saveKeyToDB(keyObject);
+
+            document.getElementById('keygen-output-key').innerText = keyObject.key_id;
+            document.getElementById('keygen-output-nama').innerText = keyObject.nama_karyawan;
+            document.getElementById('keygen-output-nik').innerText = keyObject.nik_karyawan;
+            document.getElementById('keygen-output-role').innerText = keyObject.role;
+            document.getElementById('keygen-output-exp').innerText = keyObject.tanggal_kadaluarsa;
+            document.getElementById('keygen-timestamp').innerText = `Dibuat pada ${keyObject.tanggal_dibuat}`;
+
+            await renderKeysTable();
+            alert(`Key Lisensi Berhasil Dibuat!\nKey: ${keyObject.key_id}`);
+        }
+
+        function copyGeneratedKey() {
+            if(!activeKeyData) return alert("Belum ada Key yang dibuat.");
+            navigator.clipboard.writeText(activeKeyData.key_id);
+            alert("Key berhasil disalin ke clipboard!");
+        }
+
+        function exportKeyJSON() {
+            if(!activeKeyData) return alert("Belum ada Key yang dibuat.");
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeKeyData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Key_Karyawan_${activeKeyData.nik_karyawan}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        async function renderKeysTable() {
+            const keys = await getKeysDatabase();
+            const tbody = document.getElementById('table-keys-body');
+            if(keys.length === 0) return tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Belum ada key yang dibuat.</td></tr>`;
+
+            tbody.innerHTML = keys.map(k => `
+                <tr class="hover:bg-slate-50 border-b border-slate-100">
+                    <td class="px-4 py-3">${k.tanggal_dibuat}</td>
+                    <td class="px-4 py-3 font-bold">${k.nama_karyawan}</td>
+                    <td class="px-4 py-3 font-mono text-xs">${k.nik_karyawan}</td>
+                    <td class="px-4 py-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs">${k.role}</span></td>
+                    <td class="px-4 py-3 font-mono font-bold text-brand-600">${k.key_id}</td>
+                    <td class="px-4 py-3 text-xs font-semibold ${k.tanggal_kadaluarsa === 'PERMANEN' ? 'text-emerald-600' : 'text-amber-600'}">${k.tanggal_kadaluarsa}</td>
+                    <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full text-[10px]">AKTIF</span></td>
+                </tr>
+            `).join('');
+        }
+
+        async function renderOverview() {
+            const db = await getDatabase();
+            let totalUang = 0; let totalMacet = 0; let totalJanji = 0;
+            const klPerformance = {};
+
+            db.forEach(act => {
+                const kl = act.kl_snapshot;
+                if(!klPerformance[kl]) klPerformance[kl] = { kunjungan: 0, uang: 0 };
+                klPerformance[kl].kunjungan++;
+
+                if (act.status === 'BAYAR') {
+                    const nom = Number(act.nominal_bayar) || 0;
+                    totalUang += nom; klPerformance[kl].uang += nom;
+                }
+                if (act.status === 'JANJI BAYAR') totalJanji++;
+                if (act.status.includes('TIDAK')) totalMacet++;
+            });
+
+            document.getElementById('stat-uang').innerText = formatRupiah(totalUang);
+            document.getElementById('stat-kunjungan').innerText = db.length.toLocaleString();
+            document.getElementById('stat-macet').innerText = totalMacet;
+            document.getElementById('stat-janji').innerText = totalJanji;
+
+            const leaderboard = Object.keys(klPerformance).map(kl => ({ nama: kl, uang: klPerformance[kl].uang, kunjung: klPerformance[kl].kunjungan })).sort((a, b) => b.uang - a.uang).slice(0, 4); 
+            const lbContainer = document.getElementById('leaderboard-container');
+            if (leaderboard.length === 0) lbContainer.innerHTML = `<p class="text-sm text-slate-400 text-center">Belum ada data kinerja.</p>`;
+            else {
+                lbContainer.innerHTML = leaderboard.map((kl, i) => `
+                    <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-medal text-2xl ${i === 0 ? 'text-yellow-400' : (i === 1 ? 'text-slate-400' : 'text-amber-600')}"></i>
+                            <div>
+                                <div class="font-bold text-slate-800 text-sm">${kl.nama}</div>
+                                <div class="text-[10px] text-slate-500">${kl.kunjung} Kunjungan</div>
+                            </div>
+                        </div>
+                        <div class="font-bold text-brand-600 text-sm">${formatRupiah(kl.uang)}</div>
+                    </div>`).join('');
+            }
+        }
+
+        async function renderTimeChart() {
+            const db = await getDatabase();
+            if (db.length === 0) return;
+            const hourCounts = new Array(24).fill(0);
+            db.forEach(act => {
+                if (act.jam) {
+                    const hour = parseInt(act.jam.split(':')[0]);
+                    if (!isNaN(hour) && hour >= 0 && hour <= 23) hourCounts[hour]++;
+                }
+            });
+
+            if (timeChartInstance) timeChartInstance.destroy();
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            timeChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}:00`), datasets: [{ label: 'Kunjungan', data: hourCounts, backgroundColor: '#22c55e', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function initMap() {
+            map = L.map('map').setView([-8.7392, 121.1563], 9);
+            const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
+            const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' });
+            satelite.addTo(map);
+            L.control.layers({"Satelit HD": satelite, "Peta Jalan": osm}).addTo(map);
+            markersLayer = L.layerGroup().addTo(map);
+        }
+
+        async function updateMap() {
+            if(!map) return;
+            markersLayer.clearLayers();
+            const db = await getDatabase();
+            const filterKL = document.getElementById('map-filter-kl').value;
+            const filterDate = document.getElementById('map-filter-date').value;
+
+            const filtered = db.filter(act => (filterKL === 'ALL' || act.kl_snapshot === filterKL) && (!filterDate || act.tanggal === filterDate) && act.latitude && act.longitude);
+            if(filtered.length === 0) return;
+
+            const bounds = [];
+            filtered.forEach(act => {
+                const lat = parseFloat(act.latitude); const lng = parseFloat(act.longitude);
+                if(isNaN(lat) || isNaN(lng)) return;
+                bounds.push([lat, lng]);
+                let iconColor = act.status === 'BAYAR' ? 'text-emerald-500' : (act.status === 'JANJI BAYAR' ? 'text-amber-500' : 'text-red-500');
+                const customIcon = L.divIcon({ className: 'custom-map-marker', html: `<i class="fa-solid fa-location-dot ${iconColor}"></i>`, iconSize: [30, 42], iconAnchor: [15, 42] });
+                L.marker([lat, lng], {icon: customIcon}).addTo(markersLayer).bindPopup(`<b>${act.nama_snapshot}</b><br>Status: ${act.status}`);
+            });
+            if (bounds.length > 0) map.fitBounds(bounds, {padding: [50, 50]});
+        }
+
+        async function updateDropdowns() {
+            const db = await getDatabase();
+            const klSet = new Set(); db.forEach(item => klSet.add(item.kl_snapshot));
+            const options = '<option value="ALL">Semua Karyawan</option>' + Array.from(klSet).sort().map(kl => `<option value="${kl}">${kl}</option>`).join('');
+            document.getElementById('filter-kl').innerHTML = options;
+            document.getElementById('map-filter-kl').innerHTML = options;
+        }
+
+        async function renderMasterTable() {
+            const db = await getDatabase();
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const filterKL = document.getElementById('filter-kl').value;
+            const filterStatus = document.getElementById('filter-status').value;
+
+            const filtered = db.filter(act => {
+                let matchSearch = act.nama_snapshot.toLowerCase().includes(search) || act.nba.toLowerCase().includes(search);
+                let matchKL = filterKL === 'ALL' || act.kl_snapshot === filterKL;
+                let matchStatus = filterStatus === 'ALL' || act.status === filterStatus;
+                return matchSearch && matchKL && matchStatus;
+            });
+
+            const tbody = document.getElementById('table-master-body');
+            if (filtered.length === 0) return tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Tidak ada data.</td></tr>`;
+
+            tbody.innerHTML = filtered.map(act => `
+                <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+                    <td class="px-4 py-3"><div class="font-bold">${act.tanggal}</div><div class="text-[11px] text-slate-400">${act.jam}</div></td>
+                    <td class="px-4 py-3 font-semibold">${act.kl_snapshot}</td>
+                    <td class="px-4 py-3"><div class="font-bold">${act.nama_snapshot}</div><div class="text-[10px] text-slate-400">NBA: ${act.nba}</div></td>
+                    <td class="px-4 py-3"><span class="text-[10px] font-bold px-2 py-1 rounded border ${act.status === 'BAYAR' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">${act.status}</span></td>
+                    <td class="px-4 py-3 text-right font-bold">${act.nominal_bayar ? formatRupiah(act.nominal_bayar) : '-'}</td>
+                    <td class="px-4 py-3 text-center">${act.tanggal_janji || '-'}</td>
+                    <td class="px-4 py-3 text-xs text-slate-500">${act.keterangan || '-'}</td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex justify-center gap-2">
+                            ${act.foto_bukti ? `<button onclick="openModalFoto('${act.foto_bukti}', '${act.nama_snapshot}', '${act.tanggal}')" class="text-sky-600 hover:text-sky-800"><i class="fa-solid fa-image"></i></button>` : ''}
+                            ${act.latitude ? `<a href="https://maps.google.com/?q=${act.latitude},${act.longitude}" target="_blank" class="text-emerald-600 hover:text-emerald-800"><i class="fa-solid fa-map-location-dot"></i></a>` : ''}
+                        </div>
+                    </td>
+                </tr>`).join('');
+        }
+
+        async function handleImportJSON(input) {
+            const files = input.files; if (files.length === 0) return;
+            showLoading("Memproses Impor File...");
+            let totalImported = 0;
+            for (let i = 0; i < files.length; i++) {
+                try {
+                    const text = await files[i].text(); const data = JSON.parse(text);
+                    if (data.metadata && data.aktivitas) totalImported += await saveTransactionsToDB(data.aktivitas);
+                } catch (e) {}
+            }
+            await updateGlobalHeader();
+            hideLoading();
+            alert(`Impor Selesai!\nSistem memproses ${totalImported} data.`);
+            switchTab('tab-overview');
+        }
+
+        function openModalFoto(base64, nama, waktu) {
+            document.getElementById('modal-img-target').src = base64;
+            document.getElementById('modal-foto-nama').innerText = nama;
+            document.getElementById('modal-foto-waktu').innerText = waktu;
+            document.getElementById('modal-foto').classList.replace('hidden', 'flex');
+        }
+
+        function closeModalFoto() { document.getElementById('modal-foto').classList.replace('flex', 'hidden'); }
+
+        async function clearDatabaseUI() {
+            if (confirm("⚠️ Kosongkan seluruh database aplikasi desktop ini?")) {
+                showLoading("Menghapus data...");
+                await clearIndexedDB();
+                await updateGlobalHeader();
+                await switchTab('tab-overview');
+                hideLoading();
+                alert("Database diclear.");
+            }
+        }
+
+        async function updateGlobalHeader() {
+            const db = await getDatabase();
+            document.getElementById('badge-total-transaksi').innerText = `${db.length.toLocaleString()} Transaksi Tersimpan`;
+        }
+
+        window.onload = async function() {
+            await updateGlobalHeader();
+            await switchTab('tab-overview');
+        };
+    </script>
+</body>
+</html>
