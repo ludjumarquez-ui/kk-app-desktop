@@ -1,7 +1,7 @@
 {
   "name": "kk-app-desktop",
   "version": "1.0.0",
-  "description": "Dashboard Administrasi & Key Generator KSP Boawae",
+  "description": "Dashboard Administrasi & Monitoring KSP Boawae",
   "main": "main.js",
   "author": "KSP Boawae",
   "scripts": {
@@ -11,8 +11,12 @@
   "build": {
     "appId": "com.kspboawae.desktop",
     "productName": "KK APP Desktop KSP Boawae",
+    "directories": {
+      "output": "dist"
+    },
     "files": [
       "main.js",
+      "preload.js",
       "www/**/*"
     ],
     "win": {
@@ -35,11 +39,12 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
     }
   },
   "devDependencies": {
-    "electron": "22.3.27",
+    "electron": "^22.3.27",
     "electron-builder": "^23.6.0"
   }
 }
