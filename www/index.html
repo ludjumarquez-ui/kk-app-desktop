@@ -230,7 +230,7 @@
                 <!-- Generate key massal untuk mobile -->
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                     <h3 class="font-bold text-slate-800 text-lg mb-4"><i class="fa-solid fa-file-excel text-emerald-600"></i> Generate Key Mobile dari Excel</h3>
-                    <p class="text-xs text-slate-500 mb-4">Format Excel: kolom <strong>NBA</strong>, <strong>Nama</strong>, <strong>TTL</strong>, <strong>Password</strong>.</p>
+                    <p class="text-xs text-slate-500 mb-4">Format Excel: kolom <strong>NBA</strong>, <strong>Nama</strong>, <strong>TTL</strong>, <strong>Password</strong>, <strong>Wilayah</strong> (BOAWAE/MBAY/SOA).</p>
                     <div class="flex gap-4 items-center flex-wrap">
                         <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none">
                         <button onclick="handleExcelImport()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-5 rounded-xl shadow-md transition text-sm">
@@ -244,7 +244,7 @@
                     <div class="mt-4 overflow-x-auto hidden" id="bulk-key-table-container">
                         <table class="w-full text-left text-sm">
                             <thead class="text-xs text-slate-500 uppercase bg-slate-100">
-                                <tr><th class="px-4 py-3">NBA</th><th class="px-4 py-3">Nama</th><th class="px-4 py-3">TTL</th><th class="px-4 py-3">Key Terenkripsi</th></tr>
+                                <tr><th class="px-4 py-3">NBA</th><th class="px-4 py-3">Nama</th><th class="px-4 py-3">TTL</th><th class="px-4 py-3">Wilayah</th><th class="px-4 py-3">Key Terenkripsi</th></tr>
                             </thead>
                             <tbody id="bulk-key-table-body"></tbody>
                         </table>
@@ -276,6 +276,7 @@
                                     <th class="px-4 py-3">Tanggal</th>
                                     <th class="px-4 py-3">Nama</th>
                                     <th class="px-4 py-3">NBA</th>
+                                    <th class="px-4 py-3">Wilayah</th>
                                     <th class="px-4 py-3">Key</th>
                                     <th class="px-4 py-3 text-center">Status</th>
                                     <th class="px-4 py-3 text-center">Aksi</th>
@@ -975,7 +976,7 @@
                 bounds.push([lat, lng]);
                 const color = act.status === 'BAYAR' ? 'text-emerald-500' : act.status === 'JANJI BAYAR' ? 'text-amber-500' : 'text-red-500';
                 const icon = L.divIcon({ className: 'custom-map-marker', html: `<i class="fa-solid fa-location-dot ${color}"></i>`, iconSize: [30,42], iconAnchor: [15,42] });
-                L.marker([lat,lng], {icon}).addTo(markersLayer).bindPopup(`<b>${act.nama_snapshot}</b><br>Status: ${act.status}<br>Karyawan: ${act.kl_snapshot}`);
+                L.marker([lat,lng], {icon}).addTo(markersLayer).bindPopup(`<b>${act.nama_snapshot}</b><br>Status: ${act.status}<br>Karyawan: ${act.kl_snapshot}<br>Wilayah: ${act.wilayah || '-'}`);
             });
             map.fitBounds(bounds, { padding: [50,50] });
         }
@@ -1181,11 +1182,11 @@
                         return newRow;
                     });
 
-                    const requiredColumns = ['NBA', 'NAMA', 'TTL', 'PASSWORD'];
+                    const requiredColumns = ['NBA', 'NAMA', 'TTL', 'PASSWORD', 'WILAYAH'];
                     const firstRow = jsonData[0];
                     const missingCols = requiredColumns.filter(col => !(col in firstRow));
                     if (missingCols.length > 0) {
-                        alert(`Kolom wajib tidak ditemukan: ${missingCols.join(', ')}. Pastikan header sesuai: NBA, Nama, TTL, Password.`);
+                        alert(`Kolom wajib tidak ditemukan: ${missingCols.join(', ')}. Pastikan header sesuai: NBA, Nama, TTL, Password, Wilayah.`);
                         return;
                     }
 
@@ -1199,13 +1200,15 @@
                         const nama = String(row['NAMA'] || '').trim();
                         const ttl = String(row['TTL'] || '').trim();
                         const password = String(row['PASSWORD'] || '').trim();
+                        const wilayah = String(row['WILAYAH'] || 'BOAWAE').toUpperCase().trim();
 
                         if (!nba || !nama) {
                             logContainer.innerHTML += `<div class="text-red-500">❌ Lewati baris tanpa NBA/Nama</div>`;
                             continue;
                         }
 
-                        const payload = JSON.stringify({ nba, nama, ttl, password });
+                        // Payload yang akan dienkripsi
+                        const payload = JSON.stringify({ nba, nama, ttl, password, wilayah });
                         const encrypted = encryptPayload(payload);
 
                         const keyObject = {
@@ -1219,6 +1222,7 @@
                             status: 'AKTIF',
                             source: 'excel',
                             ttl: ttl,
+                            wilayah: wilayah,
                             password_encrypted: true
                         };
 
@@ -1247,7 +1251,7 @@
         function renderBulkKeysTable(keys) {
             const tbody = document.getElementById('bulk-key-table-body');
             if (keys.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-slate-400">Tidak ada key.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">Tidak ada key.</td></tr>';
                 return;
             }
 
@@ -1256,6 +1260,7 @@
                     <td class="px-4 py-3 font-mono text-xs">${k.nba}</td>
                     <td class="px-4 py-3 font-bold">${k.nama_karyawan}</td>
                     <td class="px-4 py-3 text-xs">${k.ttl || '-'}</td>
+                    <td class="px-4 py-3 text-xs">${k.wilayah || '-'}</td>
                     <td class="px-4 py-3">
                         <div class="font-mono text-xs text-slate-500 truncate max-w-xs" title="${k.key_id}">${k.key_id.substring(0, 30)}...</div>
                         <button onclick="copyText('${k.key_id}')" class="text-sky-600 hover:text-sky-800 text-xs font-bold mt-1">
@@ -1289,7 +1294,8 @@
                     key: k.key_id,
                     nba: k.nba,
                     nama: k.nama_karyawan,
-                    ttl: k.ttl || null
+                    ttl: k.ttl || null,
+                    wilayah: k.wilayah || 'BOAWAE'
                 }))
             };
 
@@ -1321,7 +1327,7 @@
 
             const tbody = document.getElementById('table-keys-body');
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400">Tidak ada key.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400">Tidak ada key.</td></tr>';
                 return;
             }
 
@@ -1330,6 +1336,7 @@
                     <td class="px-4 py-3">${k.tanggal_dibuat}</td>
                     <td class="px-4 py-3 font-bold">${k.nama_karyawan}</td>
                     <td class="px-4 py-3 font-mono text-xs">${k.nba || k.nik_karyawan}</td>
+                    <td class="px-4 py-3 text-xs">${k.wilayah || '-'}</td>
                     <td class="px-4 py-3 font-mono font-bold text-brand-600 max-w-[200px] truncate" title="${k.key_id}">${k.key_id}</td>
                     <td class="px-4 py-3 text-center"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${k.status === 'AKTIF' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${k.status}</span></td>
                     <td class="px-4 py-3 text-center">
@@ -1396,9 +1403,13 @@
                     const text = await files[i].text();
                     const data = JSON.parse(text);
                     if (data.metadata && data.aktivitas) {
+                        // Pastikan field latitude/longitude/foto_bukti/wilayah ada
                         const aktivitas = data.aktivitas.map(act => ({
                             ...act,
-                            wilayah: act.wilayah || 'BOAWAE'
+                            wilayah: act.wilayah || 'BOAWAE',
+                            latitude: act.latitude || act.lat || null,
+                            longitude: act.longitude || act.lng || null,
+                            foto_bukti: act.foto_bukti || act.foto || null
                         }));
                         await saveLaporan(aktivitas);
                         totalImported += aktivitas.length;
