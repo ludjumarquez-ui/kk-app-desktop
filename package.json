@@ -1,0 +1,45 @@
+{
+  "name": "kk-app-desktop",
+  "version": "1.0.0",
+  "description": "Dashboard Administrasi & Key Generator KSP Boawae",
+  "main": "main.js",
+  "author": "KSP Boawae",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.kspboawae.desktop",
+    "productName": "KK APP Desktop KSP Boawae",
+    "files": [
+      "main.js",
+      "index.html"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.0"
+  }
+}
