@@ -1,2 +1,1 @@
-// preload.js
-// Saat ini tidak ada API khusus, hanya untuk kompatibilitas keamanan
+// Preload script kosong, bisa diisi nanti jika perlu API khusus
