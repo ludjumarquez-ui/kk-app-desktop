@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; user-select: none; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.custom-map-marker { display: flex; align-items: center; justify-content: center; background: none; border: none; }
+.custom-map-marker i { font-size: 28px; filter: drop-shadow(0px 3px 3px rgba(0,0,0,0.4)); }
+#loading-overlay { backdrop-filter: blur(5px); }
+.sidebar-item.active { background-color: #16a34a; color: white; }
+.sidebar-item:not(.active):hover { background-color: #1e293b; }
