@@ -1,7 +1,7 @@
 // ================== AUTH & SESSION ==================
 const ADMIN_NAME = "Ansel";
 // Hash SHA-256 dari "Ansel12345" (dihitung saat pertama kali, kita hardcode hash-nya)
-const ADMIN_PASSWORD_HASH = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"; // contoh, ganti dengan hash sebenarnya
+const ADMIN_PASSWORD_HASH = '020f0e518d8bd75aa81a1deaaed60a3a32da94932db125083c068c39691baa81'
 
 let currentUser = null; // { nama, role, wilayah, token }
 
