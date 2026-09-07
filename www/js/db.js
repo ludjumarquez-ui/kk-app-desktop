@@ -1,6 +1,6 @@
 // ================== DATABASE (IndexedDB) ==================
 const DB_NAME = 'KSP_Boawae_Desktop_Data';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const STORE_LAPORAN = 'laporan_kunjungan';
 const STORE_KEYS = 'keys_karyawan';
 const STORE_USERS = 'users';
